@@ -10,6 +10,7 @@
     "postinstall": "nuxt prepare"
   },
   "dependencies": {
+    "face-api.js": "^0.22.2",
     "nuxt": "^3.13.2",
     "three": "^0.169.0",
     "vue": "latest",
