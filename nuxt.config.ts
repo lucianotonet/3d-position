@@ -7,19 +7,12 @@ export default defineNuxtConfig({
       include: ['three', 'face-api.js']
     }
   },
-  build: {
-    transpile: ['face-api.js']
-  },
+  // build: {
+  //   transpile: ['face-api.js']
+  // },
   nitro: {
     static: true,
-  },
-  server: {
-    host: '0.0.0.0', // Permite conexões de qualquer IP
-    https: {
-      key: './server.key',
-      cert: './server.crt'
-    }
-  },
+  },  
   app: {
     head: {
       meta: [
