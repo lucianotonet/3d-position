@@ -1,7 +1,7 @@
 <template>
     <div ref="threeCanvasContainer" class="three-canvas-container">
         <video ref="videoElement" class="face-detection-video" v-show="isVideoVisible"></video>
-        <canvas ref="overlayCanvas" class="overlay-canvas"></canvas>
+        <canvas ref="overlayCanvas" class="overlay-canvas" v-show="isFaceMeshVisible"></canvas>
         <div class="debug-container">
             <div class="info-layer">
                 <h3>Dados de Posicionamento</h3>
@@ -22,9 +22,14 @@
                 </label>
             </div>
         </div>
-        <button @click="toggleVideoVisibility" class="toggle-button">
-            {{ isVideoVisible ? 'Ocultar Câmera' : 'Mostrar Câmera' }}
-        </button>
+        <div class="control-buttons">
+            <button @click="toggleVideoVisibility" class="toggle-button">
+                {{ isVideoVisible ? 'Ocultar Câmera' : 'Mostrar Câmera' }}
+            </button>
+            <button @click="toggleFaceMeshVisibility" class="toggle-button">
+                {{ isFaceMeshVisible ? 'Ocultar Mesh' : 'Mostrar Mesh' }}
+            </button>
+        </div>
     </div>
 </template>
 
@@ -37,7 +42,8 @@ const threeCanvasContainer = ref(null);
 const videoElement = ref(null);
 const overlayCanvas = ref(null);
 const headPosition = ref({ x: 0, y: 0, z: 0 });
-const isVideoVisible = ref(true);
+const isVideoVisible = ref(false);
+const isFaceMeshVisible = ref(false);
 
 let scene, camera, renderer, stream;
 const initialCameraZ = 20;
@@ -50,6 +56,9 @@ const cameraZ = ref(initialCameraZ);
 const targetCameraZ = ref(initialCameraZ);
 
 const isMobile = ref(false);
+
+const initialCameraY = 4;
+const yRange = 5; // Ajuste este valor para controlar a sensibilidade do movimento vertical
 
 onMounted(async () => {
     try {
@@ -166,25 +175,31 @@ async function detectFace() {
 
         updateCameraPosition();
 
-        // Draw face landmarks
-        const ctx = overlayCanvas.value.getContext('2d');
-        ctx.clearRect(0, 0, overlayCanvas.value.width, overlayCanvas.value.height);
-        ctx.strokeStyle = '#00ff00';
-        ctx.lineWidth = 2;
-
-        // Draw face box
-        ctx.strokeRect(x, y, width, height);
-
-        // Draw selected landmarks
-        const landmarks = detection.landmarks.positions;
-        const selectedPoints = [0, 16, 27, 30, 45, 36]; // Exemplo de pontos selecionados
-        selectedPoints.forEach(index => {
-            ctx.beginPath();
-            ctx.arc(landmarks[index].x, landmarks[index].y, 2, 0, 2 * Math.PI);
-            ctx.fillStyle = '#ff0000';
-            ctx.fill();
-        });
+        if (isFaceMeshVisible.value) {
+            drawFaceMesh(detection);
+        }
     }
+}
+
+function drawFaceMesh(detection) {
+    const ctx = overlayCanvas.value.getContext('2d');
+    ctx.clearRect(0, 0, overlayCanvas.value.width, overlayCanvas.value.height);
+    ctx.strokeStyle = '#00ff00';
+    ctx.lineWidth = 2;
+
+    // Draw face box
+    const { x, y, width, height } = detection.detection.box;
+    ctx.strokeRect(x, y, width, height);
+
+    // Draw selected landmarks
+    const landmarks = detection.landmarks.positions;
+    const selectedPoints = [0, 16, 27, 30, 45, 36]; // Exemplo de pontos selecionados
+    selectedPoints.forEach(index => {
+        ctx.beginPath();
+        ctx.arc(landmarks[index].x, landmarks[index].y, 2, 0, 2 * Math.PI);
+        ctx.fillStyle = '#ff0000';
+        ctx.fill();
+    });
 }
 
 function updateCameraPosition() {
@@ -196,6 +211,9 @@ function updateCameraPosition() {
     // Ajuste do eixo X da câmera (invertido)
     const xRange = 10; // Ajuste este valor para controlar a sensibilidade do movimento horizontal
     camera.position.x = -headPosition.value.x * xRange; // Note o sinal negativo aqui
+
+    // Ajuste do eixo Y da câmera
+    camera.position.y = initialCameraY + headPosition.value.y * yRange;
 }
 
 function animate() {
@@ -209,6 +227,9 @@ function animate() {
     // Atualizar a matriz de projeção da câmera após modificar sua posição
     camera.updateProjectionMatrix();
     
+    // Atualizar o ponto de mira da câmera para manter o foco no centro da cena
+    // camera.lookAt(0, camera.position.y, 0);
+    
     renderer.render(scene, camera);
 }
 
@@ -221,6 +242,10 @@ function onResize() {
 
 function toggleVideoVisibility() {
     isVideoVisible.value = !isVideoVisible.value;
+}
+
+function toggleFaceMeshVisibility() {
+    isFaceMeshVisible.value = !isFaceMeshVisible.value;
 }
 
 // Observar mudanças nos valores de minZ e maxZ
@@ -278,9 +303,27 @@ watch([minZ, maxZ], () => {
 }
 
 .toggle-button {
+    padding: 10px;
+    background-color: #007bff;
+    color: white;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+}
+
+.toggle-button:hover {
+    background-color: #0056b3;
+}
+
+.control-buttons {
     position: absolute;
-    top: 10px;
+    bottom: 10px;
     left: 10px;
+    display: flex;
+    gap: 10px;
+}
+
+.toggle-button {
     padding: 10px;
     background-color: #007bff;
     color: white;
